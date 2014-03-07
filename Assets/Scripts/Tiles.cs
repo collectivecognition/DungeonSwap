@@ -10,7 +10,9 @@ public class Tiles : MonoBehaviour {
 	private Transform[,] tiles;
 
 	private enum DragDir {None, Horizontal, Vertical};
-	private bool dragging = false;
+	private enum DragState {None, Dragging, Snapping};
+
+	private DragState dragState = DragState.None;
 	private DragDir draggingDir = DragDir.None;
 	private int draggingRow;
 	private int draggingCol;
@@ -34,7 +36,12 @@ public class Tiles : MonoBehaviour {
 	// Update is called once per frame
 
 	void Update () {
-		if(dragging){
+		// Handle dragging of rows / columns of tiles
+		// TODO: Limit distance to a single tile per drag
+
+		Vector2 offset = Vector2.zero;
+
+		if(dragState == DragState.Dragging){
 			Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
 			float diff = Vector3.Distance(mouseWorldPos, draggingPos);
@@ -52,43 +59,53 @@ public class Tiles : MonoBehaviour {
 				draggingRow = -(int)(transform.position.y - mouseWorldPos.y - tileH / 2);
 			}
 
-			// Apply offset to row / column
-			
+			offset = new Vector2(diffX, diffY);
+		}
+
+		// Handle snapping of rows / columns of tiles to the grid after dragging stops
+
+		if(dragState == DragState.Snapping){
+			dragState = DragState.None; // FIXME
+		}
+
+		// Handle actual movement of tiles
+
+		if(dragState != DragState.None){
 			switch(draggingDir){
 				case DragDir.Horizontal:
 					// Set offset on each tile in row
 					
 					for(int ii = 0; ii < tileW; ii++){
 						Transform tile = tiles[ii, draggingRow];
-						tile.localPosition = new Vector3(ii - tileW / 2 + diffX, tile.localPosition.y, tile.localPosition.z);
+						tile.localPosition = new Vector3(ii - tileW / 2 + offset.x, tile.localPosition.y, tile.localPosition.z);
 					}
-					break;
-				
+				break;
+					
 				case DragDir.Vertical:
 					// Set offset on each tile in column
 					
 					for(int ii = 0; ii < tileH; ii++){
 						Transform tile = tiles[draggingCol, ii];
-						tile.localPosition = new Vector3(tile.localPosition.x, ii - tileH / 2 + diffY, tile.localPosition.z);
+						tile.localPosition = new Vector3(tile.localPosition.x, ii - tileH / 2 + offset.y, tile.localPosition.z);
 					}	
-					break;
+				break;
 			}
 		}
 	}
 	
 	void OnMouseDown () {
-		dragging = true;
-		draggingPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+		if(dragState == DragState.None){
+			dragState = DragState.Dragging;
+			draggingPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+		}
 	}
 	
 	void OnMouseUp () {
-		dragging = false;
+		dragState = DragState.Snapping;
 		draggingDir = DragDir.None;
 	}
 	
 	void OnMouseDrag () {
-		if (dragging) {
-
-		}
+		// ???
 	}
 }
