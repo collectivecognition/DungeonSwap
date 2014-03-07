@@ -18,7 +18,7 @@ public class Tiles : MonoBehaviour {
 	private int draggingCol;
 	private Vector3 draggingPos;
 	private Vector2 draggingOffset;
-	private float dragMax = 1.25f;
+	private float dragMax = 1f;
 
 	private float snapSpeed = 4f;
 
