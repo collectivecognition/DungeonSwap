@@ -1,9 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class Tiles : MonoBehaviour {
 
 	public Transform tilePrefab;
+	public Transform hero;
 
 	private int tileW = 7;
 	private int tileH = 7;
@@ -27,6 +29,96 @@ public class Tiles : MonoBehaviour {
 		tile.parent = this.transform;
 		tile.transform.localPosition = new Vector3(x - tileW / 2, y - tileH / 2, 0f);
 		tiles[x, y] = tile;
+	}
+
+	void AddTile (float x, float y){
+		AddTile ((int)x, (int)y);
+	}
+
+	void RemoveTile (int x, int y){
+		Destroy(tiles[x, y].gameObject);
+		tiles [x, y] = null;
+	}
+
+	void RemoveTile (float x, float y){
+		RemoveTile ((int)x, (int)y);
+	}
+
+	Tile GetTile (int x, int y){
+		return tiles [x, y].GetComponent<Tile> ();
+	}
+
+	Tile GetTile (float x, float y){
+		return GetTile ((int)x, (int)y);
+	}
+
+	void MoveTile (int x, int y, int newX, int newY){
+		tiles [newX, newY] = tiles [x, y];
+		tiles [x, y] = null;
+	}
+
+	void MoveTile (float x, float y, float newX, float newY){
+		MoveTile ((int)x, (int)y, (int)newX, (int)newY);
+	}
+
+
+	bool TileIsInBounds (int x, int y){
+		return x >= 0 && y >= 0 && x <= tiles.GetUpperBound (0) && y <= tiles.GetUpperBound (1);
+	}
+
+	bool TileIsInBounds (float x, float y){
+		return TileIsInBounds ((int)x, (int)y);
+	}
+
+	public int GetRandomWalkableDirection(Vector2 start){
+		List<int> walkableDirections = new List<int> ();
+
+		// TODO: Check bounds on start.x, start.y
+
+		Debug.Log ("Checking " + start);	
+
+		Tile startTile = GetTile (start.x, start.y);
+
+		Vector2[] directions = new Vector2[] {
+			new Vector2(0, -1),	// Up
+			new Vector2(1, 0),	// Right
+			new Vector2(0, 1),	// Down
+			new Vector2(-1, 0)	// Left
+		};
+
+		for(int ii = 0; ii < directions.Length; ii++){
+			Vector2 direction = directions[ii];
+			Vector2 pos = start + direction;
+
+			// Check bounds
+
+			if(TileIsInBounds (pos.x, pos.y)){
+				Tile tile = GetTile (start.x, start.y);
+				bool walkable = false;
+				Debug.Log (start+":"+pos);
+				Debug.Log (ii + ":" + Directions.Opposite[ii]);
+				Debug.Log (startTile.walls[ii].GetComponent<Wall>().walkable + ":" + tile.walls[Directions.Opposite[ii]].GetComponent<Wall>().walkable);
+				if(startTile.walls[ii].GetComponent<Wall>().walkable){
+					if(tile.walls[Directions.Opposite[ii]].GetComponent<Wall>().walkable){
+						walkable = true;
+					}
+				}
+
+				if(walkable){
+					walkableDirections.Add (ii);
+				}
+			}
+		}
+
+		if(walkableDirections.Count > 0){
+			int randomDirection = walkableDirections[Random.Range (0, walkableDirections.Count - 1)];
+			Debug.Log ("Walkable: " + randomDirection);
+			return randomDirection;
+		}
+
+		Debug.Log ("Not walkable");
+
+		return 5;
 	}
 
 	// Use this for initialization
@@ -89,17 +181,17 @@ public class Tiles : MonoBehaviour {
 				switch(draggingDir){
 					case DragDir.Horizontal:
 						if(target.x > 0){
-							Destroy(tiles[tileW - 1, draggingRow].gameObject);
+							RemoveTile (tileW - 1, draggingRow);
 							for(int ii = tileW - 1; ii > 0; ii--){
-								tiles[ii, draggingRow] = tiles[ii - 1, draggingRow];
+								MoveTile(ii - 1, draggingRow, ii, draggingRow);
 							}
 							AddTile (0, draggingRow);
 						}
 
 						if(target.x < 0){
-							Destroy(tiles[0, draggingRow].gameObject);
+							RemoveTile (0, draggingRow);
 							for(int ii = 0; ii < tileW - 1; ii++){
-								tiles[ii, draggingRow] = tiles[ii + 1, draggingRow];
+								MoveTile (ii + 1, draggingRow, ii, draggingRow);
 							}
 							AddTile (tileW - 1, draggingRow);
 						}
@@ -107,7 +199,7 @@ public class Tiles : MonoBehaviour {
 						
 					case DragDir.Vertical:
 						if(target.y > 0){
-							Destroy(tiles[draggingCol, tileH - 1].gameObject);
+							RemoveTile (draggingCol, tileH - 1);
 							for(int ii = tileH - 1; ii > 0; ii--){
 								tiles[draggingCol, ii] = tiles[draggingCol, ii - 1];
 							}
@@ -115,9 +207,9 @@ public class Tiles : MonoBehaviour {
 						}
 						
 						if(target.y < 0){
-							Destroy(tiles[draggingCol, 0].gameObject);
+							RemoveTile (draggingCol, 0);
 							for(int ii = 0; ii < tileH - 1; ii++){
-								tiles[draggingCol, ii] = tiles[draggingCol, ii + 1];
+								MoveTile (draggingCol, ii + 1, draggingCol, ii);
 							}
 							AddTile (draggingCol, tileH - 1);
 						}
@@ -128,6 +220,11 @@ public class Tiles : MonoBehaviour {
 				
 				dragState = DragState.None;
 				draggingDir = DragDir.None;
+
+				// Take turn
+
+				Debug.Log ("Sending FSM event to take turn" + Random.value);
+				PlayMakerFSM.FindFsmOnGameObject(hero.gameObject, "FSM").SendEvent("TakeTurn");
 
 			// Not done snapping, move towards target
 
@@ -144,8 +241,8 @@ public class Tiles : MonoBehaviour {
 					// Set offset on each tile in row
 					
 					for(int ii = 0; ii < tileW; ii++){
-						Transform tile = tiles[ii, draggingRow];
-					tile.localPosition = new Vector3(ii - tileW / 2 + draggingOffset.x, tile.localPosition.y, tile.localPosition.z);
+						Tile tile = GetTile (ii, draggingRow);
+						tile.transform.localPosition = new Vector3(ii - tileW / 2 + draggingOffset.x, tile.transform.localPosition.y, tile.transform.localPosition.z);
 					}
 				break;
 					
@@ -153,8 +250,8 @@ public class Tiles : MonoBehaviour {
 					// Set offset on each tile in column
 					
 					for(int ii = 0; ii < tileH; ii++){
-						Transform tile = tiles[draggingCol, ii];
-					tile.localPosition = new Vector3(tile.localPosition.x, ii - tileH / 2 + draggingOffset.y, tile.localPosition.z);
+						Tile tile = GetTile (draggingCol, ii);
+						tile.transform.localPosition = new Vector3(tile.transform.localPosition.x, ii - tileH / 2 + draggingOffset.y, tile.transform.localPosition.z);
 					}	
 				break;
 			}
