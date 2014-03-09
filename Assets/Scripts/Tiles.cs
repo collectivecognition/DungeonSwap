@@ -56,6 +56,10 @@ public class Tiles : MonoBehaviour {
 		return GetTile ((int)x, (int)y);
 	}
 
+	public Tile GetTile(Vector2 pos){
+		return GetTile ((int)pos.x, (int)pos.y);
+	}
+
 	public void MoveTile (int x, int y, int newX, int newY){
 		tiles [newX, newY] = tiles [x, y];
 		tiles [x, y] = null;
@@ -64,8 +68,7 @@ public class Tiles : MonoBehaviour {
 	public void MoveTile (float x, float y, float newX, float newY){
 		MoveTile ((int)x, (int)y, (int)newX, (int)newY);
 	}
-
-
+	
 	public bool TileIsInBounds (int x, int y){
 		return x >= 0 && y >= 0 && x <= tiles.GetUpperBound (0) && y <= tiles.GetUpperBound (1);
 	}
@@ -74,55 +77,66 @@ public class Tiles : MonoBehaviour {
 		return TileIsInBounds ((int)x, (int)y);
 	}
 
-	public int GetRandomWalkableDirection(Vector2 start){
-		List<int> walkableDirections = new List<int> ();
+	public void UpdateTilePositions () {
+		for(int ii = 0; ii < tileW; ii++){
+			for(int jj = 0; jj < tileH; jj++){
+				Tile tile = GetTile (ii, jj);
+				tile.pos = new Vector2(ii, jj);
+			}
+		}
+	}
 
-		// TODO: Check bounds on start.x, start.y
+	public Tile GetRandomWalkableTileFromTile(Tile startTile){
+		List<Tile> walkableTiles = new List<Tile> ();
 
-		Debug.Log ("Checking " + start);	
+		Tile tile;
 
-		Tile startTile = GetTile (start.x, start.y);
+		// Up
 
-		Vector2[] directions = new Vector2[] {
-			new Vector2(0, -1),	// Up
-			new Vector2(1, 0),	// Right
-			new Vector2(0, 1),	// Down
-			new Vector2(-1, 0)	// Left
-		};
-
-		for(int ii = 0; ii < directions.Length; ii++){
-			Vector2 direction = directions[ii];
-			Vector2 pos = start + direction;
-
-			// Check bounds
-
-			if(TileIsInBounds (pos.x, pos.y)){
-				Tile tile = GetTile (pos.x, pos.y);
-				bool walkable = false;
-				Debug.Log (start+":"+pos);
-				Debug.Log (ii + ":" + Directions.Opposite[ii]);
-				Debug.Log (startTile.walls[ii].GetComponent<Wall>().walkable + ":" + tile.walls[Directions.Opposite[ii]].GetComponent<Wall>().walkable);
-				if(startTile.walls[ii].GetComponent<Wall>().walkable){
-					if(tile.walls[Directions.Opposite[ii]].GetComponent<Wall>().walkable){
-						walkable = true;
-					}
-				}
-
-				if(walkable){
-					walkableDirections.Add (ii);
-				}
+		tile = GetTile (startTile.pos + new Vector2 (0, -1));
+		if(tile != null){
+			if(startTile.up.GetComponent<Wall>().walkable && tile.down.GetComponent<Wall>().walkable){
+				walkableTiles.Add (tile);
 			}
 		}
 
-		if(walkableDirections.Count > 0){
-			int randomDirection = walkableDirections[Random.Range (0, walkableDirections.Count - 1)];
-			Debug.Log ("Walkable: " + randomDirection);
-			return randomDirection;
+		// Down
+
+		tile = GetTile (startTile.pos + new Vector2 (0, 1));
+		if(tile != null){
+			if(startTile.down.GetComponent<Wall>().walkable && tile.up.GetComponent<Wall>().walkable){
+				walkableTiles.Add (tile);
+			}
 		}
 
-		Debug.Log ("Not walkable");
+		// Left
 
-		return 5; // FIXME: Dear god
+		tile = GetTile (startTile.pos + new Vector2 (-1, 0));
+		if(tile != null){
+			if(startTile.left.GetComponent<Wall>().walkable && tile.right.GetComponent<Wall>().walkable){
+				walkableTiles.Add (tile);
+			}
+		}
+
+		// Right
+
+		tile = GetTile (startTile.pos + new Vector2 (1, 0));
+		if(tile != null){
+			if(startTile.right.GetComponent<Wall>().walkable && tile.left.GetComponent<Wall>().walkable){
+				walkableTiles.Add (tile);
+			}
+		}
+
+		// Select a random tile, if we found any walkable ones
+
+		if(walkableTiles.Count > 0){
+			Tile randomTile = walkableTiles[Random.Range (0, walkableTiles.Count - 1)];
+			return randomTile;
+		}
+
+		// Nothing walkable
+
+		return null;
 	}
 
 	void Scroll (int direction) {
@@ -131,7 +145,7 @@ public class Tiles : MonoBehaviour {
 
 	// Use this for initialization
 
-	void Start () {
+	void Awake () {
 		tiles = new Transform[tileW, tileH];
 
 		for(int ii = 0; ii < tileW; ii++){
@@ -140,138 +154,137 @@ public class Tiles : MonoBehaviour {
 			}
 		}
 
+		UpdateTilePositions ();
+
 		Game.tiles = this;
 	}
 
 	// Update is called once per frame
 
 	void Update () {
-		// Handle scrolling of tiles
+		if (Game.state == GameState.HeroTurn) {
 
-		if(scrollState == ScrollState.Scrolling){
+						// Handle dragging of rows / columns of tiles
 
-		}
+						if (dragState == DragState.Dragging) {
+								Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint (Input.mousePosition);
 
-		// Handle dragging of rows / columns of tiles
+								float diff = Vector3.Distance (mouseWorldPos, draggingPos);
+								float diffX = mouseWorldPos.x - draggingPos.x;
+								float diffY = mouseWorldPos.y - draggingPos.y;
 
-		if(dragState == DragState.Dragging){
-			Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+								diffX = Mathf.Clamp (diffX, -dragMax, dragMax);
+								diffY = Mathf.Clamp (diffY, -dragMax, dragMax);
 
-			float diff = Vector3.Distance(mouseWorldPos, draggingPos);
-			float diffX = mouseWorldPos.x - draggingPos.x;
-			float diffY = mouseWorldPos.y - draggingPos.y;
+								// Determine which direction we're dragging
 
-			diffX = Mathf.Clamp(diffX, -dragMax, dragMax);
-			diffY = Mathf.Clamp(diffY, -dragMax, dragMax);
+								if (draggingDir == DragDir.None && diff > 0.1f) {
+										draggingDir = Mathf.Abs (diffX) > Mathf.Abs (diffY) ? DragDir.Horizontal : DragDir.Vertical;
 
-			// Determine which direction we're dragging
+										// Determine which row or column is being dragged
+					
+										draggingCol = -(int)(transform.position.x - mouseWorldPos.x - tileW / 2 - 0.5f);
+										draggingRow = -(int)(transform.position.y - mouseWorldPos.y - tileH / 2 - 0.5f);
+								}
 
-			if(draggingDir == DragDir.None && diff > 0.1f){
-				draggingDir = Mathf.Abs(diffX) > Mathf.Abs(diffY) ? DragDir.Horizontal : DragDir.Vertical;
+								draggingOffset = new Vector2 (diffX, diffY);
+						}
 
-				// Determine which row or column is being dragged
+						// Handle snapping of rows / columns of tiles to the grid after dragging stops
+
+						if (dragState == DragState.Snapping) {
+								Vector2 target;
 				
-				draggingCol = -(int)(transform.position.x - mouseWorldPos.x - tileW / 2 - 0.5f);
-				draggingRow = -(int)(transform.position.y - mouseWorldPos.y - tileH / 2 - 0.5f);
-			}
+								if (draggingDir == DragDir.Horizontal) {
+										target = new Vector2 (draggingOffset.x > 0 ? 1 : -1, 0);
+								} else {
+										target = new Vector2 (0, draggingOffset.y > 0 ? 1 : -1);
+								}
 
-			draggingOffset = new Vector2(diffX, diffY);
-		}
+								// Are we done snapping?
 
-		// Handle snapping of rows / columns of tiles to the grid after dragging stops
+								if (draggingOffset.x == target.x && draggingOffset.y == target.y) {
+										// Update tiles array to reflect changes
 
-		if(dragState == DragState.Snapping){
-			Vector2 target;
-			
-			if(draggingDir == DragDir.Horizontal){
-				target = new Vector2(draggingOffset.x > 0 ? 1 : -1, 0);
-			}else{
-				target = new Vector2(0, draggingOffset.y > 0 ? 1 : -1);
-			}
+										switch (draggingDir) {
+											case DragDir.Horizontal:
+												if (target.x > 0) {
+														RemoveTile (tileW - 1, draggingRow);
+														for (int ii = tileW - 1; ii > 0; ii--) {
+																MoveTile (ii - 1, draggingRow, ii, draggingRow);
+														}
+														AddTile (0, draggingRow);
+												}
 
-			// Are we done snapping?
+												if (target.x < 0) {
+														RemoveTile (0, draggingRow);
+														for (int ii = 0; ii < tileW - 1; ii++) {
+																MoveTile (ii + 1, draggingRow, ii, draggingRow);
+														}
+														AddTile (tileW - 1, draggingRow);
+												}
+											break;
+								
+											case DragDir.Vertical:
+												if (target.y > 0) {
+														RemoveTile (draggingCol, tileH - 1);
+														for (int ii = tileH - 1; ii > 0; ii--) {
+																tiles [draggingCol, ii] = tiles [draggingCol, ii - 1];
+														}
+														AddTile (draggingCol, 0);
+												}
+							
+												if (target.y < 0) {
+														RemoveTile (draggingCol, 0);
+														for (int ii = 0; ii < tileH - 1; ii++) {
+																MoveTile (draggingCol, ii + 1, draggingCol, ii);
+														}
+														AddTile (draggingCol, tileH - 1);
+												}
+											break;
+										}
+										
+										// Update tile positions
 
-			if(draggingOffset.x == target.x && draggingOffset.y == target.y){
-				// Update tiles array to reflect changes
+										UpdateTilePositions (); // FIXME: Optimize
 
-				switch(draggingDir){
-					case DragDir.Horizontal:
-						if(target.x > 0){
-							RemoveTile (tileW - 1, draggingRow);
-							for(int ii = tileW - 1; ii > 0; ii--){
-								MoveTile(ii - 1, draggingRow, ii, draggingRow);
-							}
-							AddTile (0, draggingRow);
+										// Reset state
+					
+										dragState = DragState.None;
+										draggingDir = DragDir.None;
+										
+										// Advance to next game state
+									
+										Game.state = GameState.HeroMoving;
+								} else {
+										draggingOffset = Vector2.MoveTowards (draggingOffset, target, Time.deltaTime * snapSpeed);
+								}
 						}
 
-						if(target.x < 0){
-							RemoveTile (0, draggingRow);
-							for(int ii = 0; ii < tileW - 1; ii++){
-								MoveTile (ii + 1, draggingRow, ii, draggingRow);
-							}
-							AddTile (tileW - 1, draggingRow);
-						}
-					break;
+						// Handle actual movement of tiles
+
+						if (dragState != DragState.None) {
+								switch (draggingDir) {
+								case DragDir.Horizontal:
+						// Set offset on each tile in row
 						
-					case DragDir.Vertical:
-						if(target.y > 0){
-							RemoveTile (draggingCol, tileH - 1);
-							for(int ii = tileH - 1; ii > 0; ii--){
-								tiles[draggingCol, ii] = tiles[draggingCol, ii - 1];
-							}
-							AddTile (draggingCol, 0);
-						}
+										for (int ii = 0; ii < tileW; ii++) {
+												Tile tile = GetTile (ii, draggingRow);
+												tile.transform.localPosition = new Vector3 (ii - tileW / 2 + draggingOffset.x, tile.transform.localPosition.y, tile.transform.localPosition.z);
+										}
+										break;
 						
-						if(target.y < 0){
-							RemoveTile (draggingCol, 0);
-							for(int ii = 0; ii < tileH - 1; ii++){
-								MoveTile (draggingCol, ii + 1, draggingCol, ii);
-							}
-							AddTile (draggingCol, tileH - 1);
+								case DragDir.Vertical:
+						// Set offset on each tile in column
+						
+										for (int ii = 0; ii < tileH; ii++) {
+												Tile tile = GetTile (draggingCol, ii);
+												tile.transform.localPosition = new Vector3 (tile.transform.localPosition.x, ii - tileH / 2 + draggingOffset.y, tile.transform.localPosition.z);
+										}	
+										break;
+								}
 						}
-					break;
 				}
-
-				// Reset state
-				
-				dragState = DragState.None;
-				draggingDir = DragDir.None;
-
-				// Take turn
-
-				// Debug.Log ("Sending FSM event to take turn" + Random.value);
-				// PlayMakerFSM.FindFsmOnGameObject(hero.gameObject, "FSM").SendEvent("TakeTurn");
-
-			// Not done snapping, move towards target
-
-			}else{
-				draggingOffset = Vector2.MoveTowards(draggingOffset, target, Time.deltaTime * snapSpeed);
-			}
-		}
-
-		// Handle actual movement of tiles
-
-		if(dragState != DragState.None){
-			switch(draggingDir){
-				case DragDir.Horizontal:
-					// Set offset on each tile in row
-					
-					for(int ii = 0; ii < tileW; ii++){
-						Tile tile = GetTile (ii, draggingRow);
-						tile.transform.localPosition = new Vector3(ii - tileW / 2 + draggingOffset.x, tile.transform.localPosition.y, tile.transform.localPosition.z);
-					}
-				break;
-					
-				case DragDir.Vertical:
-					// Set offset on each tile in column
-					
-					for(int ii = 0; ii < tileH; ii++){
-						Tile tile = GetTile (draggingCol, ii);
-						tile.transform.localPosition = new Vector3(tile.transform.localPosition.x, ii - tileH / 2 + draggingOffset.y, tile.transform.localPosition.z);
-					}	
-				break;
-			}
-		}
 	}
 	
 	void OnMouseDown () {

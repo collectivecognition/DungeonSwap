@@ -4,13 +4,18 @@ using System.Collections;
 public class Tile : MonoBehaviour {
 
 	private Sprite sprite;
-
-	//[System.NonSerialized]
-	public Transform[] walls;
+	
 
 	public Transform floor;
 	public Transform wall;
 	public Transform door;
+
+	public Transform up;
+	public Transform down;
+	public Transform left;
+	public Transform right;
+
+	public Vector2 pos;
 
 	Transform Add (Transform what, int layer = 0, float rotation = 0f){
 		Transform thing = (Transform)Instantiate (what);
@@ -25,11 +30,9 @@ public class Tile : MonoBehaviour {
 	void Start () {
 		floor = Add (floor);
 
-		walls = new Transform[4];
-
-		walls[Directions.Up] = Random.value >= 0.5 ? Add (wall, 1, 270) : Add (door, 1, 270);
-		walls[Directions.Right] = Random.value >= 0.5 ? Add (wall, 1, 180) : Add (door, 1, 180);
-		walls[Directions.Down] = Random.value >= 0.5 ? Add (wall, 1, 90) : Add (door, 1, 90);
-		walls[Directions.Left] = Random.value >= 0.5 ? Add (wall, 1) : Add (door, 1);
+		up = Random.value >= 0.5 ? Add (wall, 1, 90) : Add (door, 1, 90);
+		right = Random.value >= 0.5 ? Add (wall, 1, 180) : Add (door, 1, 180);
+		down = Random.value >= 0.5 ? Add (wall, 1, 270) : Add (door, 1, 270);
+		left = Random.value >= 0.5 ? Add (wall, 1) : Add (door, 1);
 	}
 }
