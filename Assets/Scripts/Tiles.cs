@@ -5,7 +5,6 @@ using System.Collections.Generic;
 public class Tiles : MonoBehaviour {
 
 	public Transform tilePrefab;
-	public Transform hero;
 
 	private int tileW = 7;
 	private int tileH = 7;
@@ -21,52 +20,57 @@ public class Tiles : MonoBehaviour {
 	private Vector3 draggingPos;
 	private Vector2 draggingOffset;
 	private float dragMax = 1f;
-
 	private float snapSpeed = 4f;
 
-	void AddTile (int x, int y){
+	private enum ScrollState {None, Scrolling};
+	private ScrollState scrollState = ScrollState.None;
+
+	public void AddTile (int x, int y){
 		Transform tile = (Transform)Instantiate(tilePrefab);
 		tile.parent = this.transform;
 		tile.transform.localPosition = new Vector3(x - tileW / 2, y - tileH / 2, 0f);
 		tiles[x, y] = tile;
 	}
 
-	void AddTile (float x, float y){
+	public void AddTile (float x, float y){
 		AddTile ((int)x, (int)y);
 	}
 
-	void RemoveTile (int x, int y){
+	public void RemoveTile (int x, int y){
 		Destroy(tiles[x, y].gameObject);
 		tiles [x, y] = null;
 	}
 
-	void RemoveTile (float x, float y){
+	public void RemoveTile (float x, float y){
 		RemoveTile ((int)x, (int)y);
 	}
 
-	Tile GetTile (int x, int y){
-		return tiles [x, y].GetComponent<Tile> ();
+	public Tile GetTile (int x, int y){
+		if(TileIsInBounds(x, y)){
+			return tiles [x, y].GetComponent<Tile> ();
+		}
+		return default(Tile);
 	}
 
-	Tile GetTile (float x, float y){
+	public Tile GetTile (float x, float y){
 		return GetTile ((int)x, (int)y);
 	}
 
-	void MoveTile (int x, int y, int newX, int newY){
+	public void MoveTile (int x, int y, int newX, int newY){
 		tiles [newX, newY] = tiles [x, y];
 		tiles [x, y] = null;
 	}
 
-	void MoveTile (float x, float y, float newX, float newY){
+	public void MoveTile (float x, float y, float newX, float newY){
 		MoveTile ((int)x, (int)y, (int)newX, (int)newY);
 	}
 
 
-	bool TileIsInBounds (int x, int y){
+	public bool TileIsInBounds (int x, int y){
 		return x >= 0 && y >= 0 && x <= tiles.GetUpperBound (0) && y <= tiles.GetUpperBound (1);
 	}
 
-	bool TileIsInBounds (float x, float y){
+	public bool TileIsInBounds (float x, float y){
 		return TileIsInBounds ((int)x, (int)y);
 	}
 
@@ -93,7 +97,7 @@ public class Tiles : MonoBehaviour {
 			// Check bounds
 
 			if(TileIsInBounds (pos.x, pos.y)){
-				Tile tile = GetTile (start.x, start.y);
+				Tile tile = GetTile (pos.x, pos.y);
 				bool walkable = false;
 				Debug.Log (start+":"+pos);
 				Debug.Log (ii + ":" + Directions.Opposite[ii]);
@@ -118,7 +122,11 @@ public class Tiles : MonoBehaviour {
 
 		Debug.Log ("Not walkable");
 
-		return 5;
+		return 5; // FIXME: Dear god
+	}
+
+	void Scroll (int direction) {
+		scrollState = ScrollState.Scrolling;
 	}
 
 	// Use this for initialization
@@ -131,11 +139,19 @@ public class Tiles : MonoBehaviour {
 				AddTile (ii, jj);
 			}
 		}
+
+		Game.tiles = this;
 	}
-	
+
 	// Update is called once per frame
 
 	void Update () {
+		// Handle scrolling of tiles
+
+		if(scrollState == ScrollState.Scrolling){
+
+		}
+
 		// Handle dragging of rows / columns of tiles
 
 		if(dragState == DragState.Dragging){
@@ -223,8 +239,8 @@ public class Tiles : MonoBehaviour {
 
 				// Take turn
 
-				Debug.Log ("Sending FSM event to take turn" + Random.value);
-				PlayMakerFSM.FindFsmOnGameObject(hero.gameObject, "FSM").SendEvent("TakeTurn");
+				// Debug.Log ("Sending FSM event to take turn" + Random.value);
+				// PlayMakerFSM.FindFsmOnGameObject(hero.gameObject, "FSM").SendEvent("TakeTurn");
 
 			// Not done snapping, move towards target
 
