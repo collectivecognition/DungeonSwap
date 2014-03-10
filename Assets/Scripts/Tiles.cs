@@ -86,6 +86,34 @@ public class Tiles : MonoBehaviour {
 		}
 	}
 
+	public bool TileIsWalkableFromTile(Tile startTile, Tile endTile){
+		// Up
+
+		if(startTile.pos.x == endTile.pos.x && startTile.pos.y > endTile.pos.y){
+			return startTile.up.GetComponent<Wall>().walkable && endTile.down.GetComponent <Wall>().walkable;
+		}
+
+		// Down
+		
+		if(startTile.pos.x == endTile.pos.x && startTile.pos.y < endTile.pos.y){
+			return startTile.down.GetComponent<Wall>().walkable && endTile.up.GetComponent <Wall>().walkable;
+		}
+
+		// Left
+		
+		if(startTile.pos.y == endTile.pos.y && startTile.pos.x > endTile.pos.x){
+			return startTile.left.GetComponent<Wall>().walkable && endTile.right.GetComponent <Wall>().walkable;
+		}
+
+		// Right
+		
+		if(startTile.pos.y == endTile.pos.y && startTile.pos.x < endTile.pos.x){
+			return startTile.right.GetComponent<Wall>().walkable && endTile.left.GetComponent <Wall>().walkable;
+		}
+
+		return false;
+	}
+
 	public Tile GetRandomWalkableTileFromTile(Tile startTile){
 		List<Tile> walkableTiles = new List<Tile> ();
 
@@ -130,7 +158,7 @@ public class Tiles : MonoBehaviour {
 		// Select a random tile, if we found any walkable ones
 
 		if(walkableTiles.Count > 0){
-			Tile randomTile = walkableTiles[Random.Range (0, walkableTiles.Count - 1)];
+			Tile randomTile = walkableTiles[Random.Range (0, walkableTiles.Count)];
 			return randomTile;
 		}
 
@@ -162,6 +190,7 @@ public class Tiles : MonoBehaviour {
 	// Update is called once per frame
 
 	void Update () {
+		Debug.Log (dragState + ":" + Game.state);
 		if (Game.state == GameState.HeroTurn) {
 
 						// Handle dragging of rows / columns of tiles
@@ -255,7 +284,7 @@ public class Tiles : MonoBehaviour {
 										
 										// Advance to next game state
 									
-										Game.state = GameState.HeroMoving;
+										Game.state = GameState.HeroTurn;
 								} else {
 										draggingOffset = Vector2.MoveTowards (draggingOffset, target, Time.deltaTime * snapSpeed);
 								}
@@ -288,6 +317,7 @@ public class Tiles : MonoBehaviour {
 	}
 	
 	void OnMouseDown () {
+		Debug.Log ("CLICKCLICKCLICK");
 		if(dragState == DragState.None){
 			dragState = DragState.Dragging;
 			draggingPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -296,7 +326,23 @@ public class Tiles : MonoBehaviour {
 	
 	void OnMouseUp () {
 		if(dragState == DragState.Dragging){
-			dragState = DragState.Snapping;
+			if(draggingDir == DragDir.None){
+				Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint (Input.mousePosition);
+
+				int x = -(int)(transform.position.x - mouseWorldPos.x - tileW / 2 - 0.5f);
+				int y = -(int)(transform.position.y - mouseWorldPos.y - tileH / 2 - 0.5f);
+
+				Tile tile = GetTile (x, y);
+
+				if(TileIsWalkableFromTile(tile, Game.hero.currentTile)){
+					Game.hero.MoveTo (GetTile (x, y));
+					Game.state = GameState.HeroMoving;
+				}
+
+				dragState = DragState.None;
+			}else{
+				dragState = DragState.Snapping;
+			}
 		}
 	}
 	
