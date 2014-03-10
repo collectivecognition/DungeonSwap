@@ -34,6 +34,7 @@ public class Tile : MonoBehaviour {
 	void Start () {
 		floor = Add (floorPrefab);
 
+
 		switch(Random.Range (0, 4)){
 			case 0:
 				up = Add (doorPrefab, 1, 90);
@@ -79,8 +80,12 @@ public class Tile : MonoBehaviour {
 		if(left == null) left = Add (wallPrefab, 1, 0);
 		if(right == null) right = Add (wallPrefab, 1, 180);
 
-		if(Random.value < 0.1f){
+		if(Random.value < 0.3f){
 			content = Add (chestPrefab, 2);
+		}
+
+		if(Random.value < 0.3f && content == null){
+			content = Add (monsterPrefab, 2);
 		}
 	}
 }

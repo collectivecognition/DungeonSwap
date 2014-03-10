@@ -190,7 +190,6 @@ public class Tiles : MonoBehaviour {
 	// Update is called once per frame
 
 	void Update () {
-		Debug.Log (dragState + ":" + Game.state);
 		if (Game.state == GameState.HeroTurn) {
 
 						// Handle dragging of rows / columns of tiles
@@ -284,7 +283,7 @@ public class Tiles : MonoBehaviour {
 										
 										// Advance to next game state
 									
-										Game.state = GameState.HeroTurn;
+										Game.state = GameState.AITurn;
 								} else {
 										draggingOffset = Vector2.MoveTowards (draggingOffset, target, Time.deltaTime * snapSpeed);
 								}
@@ -317,7 +316,6 @@ public class Tiles : MonoBehaviour {
 	}
 	
 	void OnMouseDown () {
-		Debug.Log ("CLICKCLICKCLICK");
 		if(dragState == DragState.None){
 			dragState = DragState.Dragging;
 			draggingPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);

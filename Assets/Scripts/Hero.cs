@@ -8,7 +8,7 @@ public class Hero : MonoBehaviour {
 	public Vector2 pos;
 	public Tile currentTile;
 	public Vector3 walkTarget;
-	public float walkSpeed = 1f;
+	public float walkSpeed = 2f;
 	public Animator animator;
 
 	// Use this for initialization
@@ -34,7 +34,7 @@ public class Hero : MonoBehaviour {
 					AttachToTile(currentTile);
 					animator.SetBool("idle", true);
 					state = State.None;
-					Game.state = GameState.HeroTurn;
+					Game.state = GameState.AITurn;
 
 					// Bumped into a chest?
 					// FIXME
