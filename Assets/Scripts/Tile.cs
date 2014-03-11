@@ -53,32 +53,10 @@ public class Tile : MonoBehaviour {
 			break;
 		};
 
-		switch(Random.Range (0, 4)){
-			case 0:
-				if(up == null)
-					up = Add (doorPrefab, 1, 90);
-			break;
-
-			case 1:
-				if(down == null)
-					down = Add (doorPrefab, 1, 270);
-			break;
-
-			case 2:
-				if(left == null)
-					left = Add (doorPrefab, 1, 0);
-			break;
-
-			case 3:
-				if(right == null)
-					right = Add (doorPrefab, 1, 180);
-			break;
-		};
-
-		if(up == null) up = Add (wallPrefab, 1, 90);
-		if(down == null) down = Add (wallPrefab, 1, 270);
-		if(left == null) left = Add (wallPrefab, 1, 0);
-		if(right == null) right = Add (wallPrefab, 1, 180);
+		if(up == null) up = Random.value < 0.5 ? Add (wallPrefab, 1, 90) : Add(doorPrefab, 1, 90);
+		if(down == null) down = Random.value < 0.5 ? Add (wallPrefab, 1, 270) : Add(doorPrefab, 1, 270);
+		if(left == null) left = Random.value < 0.5 ? Add (wallPrefab, 1, 0) : Add(doorPrefab, 1, 0);
+		if(right == null) right = Random.value < 0.5 ? Add (wallPrefab, 1, 180) : Add(doorPrefab, 1, 180);
 
 		if(Random.value < 0.3f){
 			content = Add (chestPrefab, 2);
